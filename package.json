@@ -1,0 +1,15 @@
+{
+  "name": "sun-stats",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace backend && npm run build --workspace frontend",
+    "dev": "npm run dev --workspace backend",
+    "test": "npm run test --workspace backend && npm run test --workspace frontend"
+  }
+}
+
