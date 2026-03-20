@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--workspace=apps/frontend"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".claude/launch-frontend.mjs"],
       "port": 5173
     }
   ]
