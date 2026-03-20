@@ -24,7 +24,7 @@ Det som fungerer nå:
 
 Det som fortsatt er uavklart:
 
-- Solarman-innlogging mot `home.solarmanpv.com` feiler foreløpig med `401` med ren token-posting
+- Solarman-integrasjonen bruker nå Solarman Open API (`globalapi.solarmanpv.com`) — krever appId/appSecret
 - frontend bruker HTTP-polling som primær oppdateringsmekanisme
 - WebSocket-endepunkt finnes i backend-koden, men er ikke i aktiv bruk i frontend
 
@@ -197,18 +197,16 @@ Viktigste felter:
 
 Når `SOLARMAN_ENABLED=true` må du også sette:
 
-- `SOLARMAN_USERNAME`
-- `SOLARMAN_PASSWORD`
-- `SOLARMAN_PLANT_ID`
+- `SOLARMAN_APP_ID` — fra Solarman support (`service@solarmanpv.com`)
+- `SOLARMAN_APP_SECRET` — fra Solarman support
+- `SOLARMAN_EMAIL` — e-posten du er registrert med i Solarman
+- `SOLARMAN_PASSWORD` — passordet ditt (SHA256-hashes automatisk)
 
 Valgfrie Solarman-felter:
 
-- `SOLARMAN_BASE_URL`
-- `SOLARMAN_TOKEN_PATH`
-- `SOLARMAN_GRANT_TYPE`
-- `SOLARMAN_CLIENT_ID`
-- `SOLARMAN_CLIENT_SECRET`
-- `SOLARMAN_SCOPE`
+- `SOLARMAN_PLANT_ID` — auto-resolves hvis tom
+- `SOLARMAN_DEVICE_SN` — serienummer på inverter, auto-resolves hvis tom
+- `SOLARMAN_BASE_URL` — standard `https://globalapi.solarmanpv.com`
 
 Polling og freshness:
 
@@ -331,26 +329,27 @@ Per nå brukes Tibbers GraphQL-endepunkter fra backend-koden i [tibber.ts](/User
 
 ## Solarman
 
-Prosjektet forsøker i dag å bruke portal-/OAuth-ruter som er observert i frontend-bundlene for `home.solarmanpv.com`.
+Prosjektet bruker Solarman Open API (`globalapi.solarmanpv.com`) for å hente sanntidsdata fra inverteren.
 
-Observerte ruter:
+API-ruter som brukes:
 
-- `/oauth2-s/oauth/token`
-- `/oauth-s/oauth/token`
-- `/maintain-s/operating/station/search`
-- `/maintain-s/operating/station/information/{plantId}`
-- `/maintain-s/history/power/{plantId}/record`
+- `POST /account/v1.0/token` — autentisering (SHA256-hashet passord)
+- `POST /station/v1.0/list` — finne stasjoner
+- `POST /station/v1.0/device` — finne enheter (inverter) på en stasjon
+- `POST /device/v1.0/currentData` — sanntidsdata fra inverter
 
-Viktig:
+For å bruke Solarman-integrasjonen trenger du:
 
-- ren token-innlogging med bruker/passord fungerer ikke per nå for din konto
-- neste sannsynlige steg er å implementere en ekte portal-login/session-flyt, eventuelt med browser-automatisering
+1. En konto på `home.solarmanpv.com`
+2. En `appId` og `appSecret` — send e-post til `service@solarmanpv.com`
+3. Sett alle fire påkrevde env-variabler (`SOLARMAN_APP_ID`, `SOLARMAN_APP_SECRET`, `SOLARMAN_EMAIL`, `SOLARMAN_PASSWORD`)
+
+Plant ID og device serial number resolves automatisk hvis de ikke er satt.
 
 ## Videre arbeid
 
 Naturlige neste steg:
 
-- implementere robust Solarman-login via session/cookie-flyt
 - ferdigstille Tibber live measurement-verifisering mot faktisk Pulse-data
 - rydde opp eller fjerne backend-WebSocket hvis polling er tilstrekkelig
 - legge til batteristøtte hvis anlegget får det senere
