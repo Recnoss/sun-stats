@@ -1,0 +1,21 @@
+[[services]]
+name = "backend"
+
+[services.build]
+dockerfilePath = "apps/backend/Dockerfile"
+
+[services.deploy]
+sleepApplication = true
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+
+[[services]]
+name = "frontend"
+
+[services.build]
+dockerfilePath = "apps/frontend/Dockerfile"
+
+[services.deploy]
+sleepApplication = true
+healthcheckPath = "/"
+healthcheckTimeout = 10
