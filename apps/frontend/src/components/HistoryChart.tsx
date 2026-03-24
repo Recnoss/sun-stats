@@ -13,7 +13,7 @@ const H = 100;
 const X_LABEL_H = 14;   // extra height below chart for time labels
 const TOTAL_H = H + X_LABEL_H;
 const GRID_LINES = 4;
-const X_LABEL_COUNT = 5; // how many time labels across the bottom
+const HOUR_STEP = 3;    // show a label every N whole hours
 
 function smoothLine(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return "";
@@ -52,14 +52,16 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
   const formatMax = (w: number) =>
     w >= 1000 ? `${(w / 1000).toFixed(1)} kW` : `${Math.round(w)} W`;
 
-  // 5 evenly-spaced X-axis time labels
+  // Whole-hour labels every HOUR_STEP hours
   const xLabels = points.length >= 2
-    ? Array.from({ length: X_LABEL_COUNT }, (_, i) => {
-        const pct = i / (X_LABEL_COUNT - 1);
-        const idx = Math.round(pct * (points.length - 1));
-        const pt  = points[idx]!;
-        return { x: pct * W, label: formatTime(pt.ts), anchor: i === 0 ? "start" : i === X_LABEL_COUNT - 1 ? "end" : "middle" };
-      })
+    ? points
+        .map((p, i) => {
+          const d = new Date(p.ts);
+          if (d.getMinutes() !== 0 || d.getHours() % HOUR_STEP !== 0) return null;
+          const x = (i / (points.length - 1)) * W;
+          return { x, label: formatTime(p.ts) };
+        })
+        .filter(Boolean) as { x: number; label: string }[]
     : [];
 
   return (
@@ -134,12 +136,12 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
         />
 
         {/* X-axis time labels */}
-        {xLabels.map(({ x, label, anchor }) => (
+        {xLabels.map(({ x, label }) => (
           <text
             key={x}
             x={x.toFixed(1)}
             y={H + 11}
-            textAnchor={anchor as "start" | "middle" | "end"}
+            textAnchor="middle"
             fontSize="8"
             fontFamily="'JetBrains Mono','Consolas',monospace"
             fill="rgba(180,210,240,0.4)"

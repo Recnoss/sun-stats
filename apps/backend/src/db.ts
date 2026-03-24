@@ -102,10 +102,21 @@ export class SnapshotStore {
 
     const rows = this.db
       .prepare(`
-        SELECT minute_ts, solar_sum, grid_import_sum, grid_export_sum, home_load_sum, sample_count
+        SELECT
+          strftime('%Y-%m-%dT%H:', minute_ts) ||
+            CASE WHEN CAST(strftime('%M', minute_ts) AS INTEGER) < 30
+                 THEN '00:00.000Z'
+                 ELSE '30:00.000Z'
+            END AS bucket_ts,
+          SUM(solar_sum)       AS solar_sum,
+          SUM(grid_import_sum) AS grid_import_sum,
+          SUM(grid_export_sum) AS grid_export_sum,
+          SUM(home_load_sum)   AS home_load_sum,
+          SUM(sample_count)    AS sample_count
         FROM minute_rollups
         WHERE minute_ts >= datetime('now', '-24 hours')
-        ORDER BY minute_ts ASC
+        GROUP BY bucket_ts
+        ORDER BY bucket_ts ASC
       `)
       .all() as Array<Record<string, unknown>>;
 
@@ -114,7 +125,7 @@ export class SnapshotStore {
       points: rows.map((row) => {
         const sampleCount = Number(row.sample_count) || 1;
         return {
-          ts: String(row.minute_ts),
+          ts: String(row.bucket_ts),
           solarW: Math.round(Number(row.solar_sum) / sampleCount),
           gridImportW: Math.round(Number(row.grid_import_sum) / sampleCount),
           gridExportW: Math.round(Number(row.grid_export_sum) / sampleCount),

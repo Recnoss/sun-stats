@@ -43,8 +43,6 @@ const envSchema = z.object({
   SOLARMAN_APP_SECRET: optionalNonEmptyString,
   SOLARMAN_EMAIL: optionalNonEmptyString,
   SOLARMAN_PASSWORD: optionalNonEmptyString,
-  SOLARMAN_APP_ID: optionalNonEmptyString,
-  SOLARMAN_APP_SECRET: optionalNonEmptyString,
   SOLARMAN_PLANT_ID: optionalNonEmptyString,
   SOLARMAN_BASE_URL: z.string().url().default("https://globalapi.solarmanpv.com"),
   SOLARMAN_STATION_PAGE_SIZE: z.coerce.number().default(20),
@@ -58,7 +56,7 @@ const envSchema = z.object({
     return;
   }
 
-  for (const field of ["SOLARMAN_USERNAME", "SOLARMAN_PASSWORD", "SOLARMAN_APP_ID", "SOLARMAN_APP_SECRET"] as const) {
+  for (const field of ["SOLARMAN_EMAIL", "SOLARMAN_PASSWORD", "SOLARMAN_APP_ID", "SOLARMAN_APP_SECRET"] as const) {
     if (!env[field]) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
