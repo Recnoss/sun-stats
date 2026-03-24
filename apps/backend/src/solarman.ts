@@ -6,8 +6,38 @@ interface PlantCandidate {
   id?: string | number;
   stationId?: string | number;
   name?: string;
-  stationName?: string;
 }
+
+interface StationListResponse {
+  stationList?: Station[];
+  total?: number;
+}
+
+interface DeviceItem {
+  deviceSn: string;
+  deviceId?: number;
+  deviceType?: string;
+  deviceState?: number;
+}
+
+interface DeviceListResponse {
+  deviceListItems?: DeviceItem[];
+}
+
+interface DataItem {
+  key: string;
+  value: string;
+  unit?: string;
+  name?: string;
+}
+
+interface CurrentDataResponse {
+  deviceSn?: string;
+  deviceState?: number;
+  dataList?: DataItem[];
+}
+
+const POWER_KEYS = ["APo_t1", "DPi_t1", "t_P_r", "total_active_power"];
 
 export class SolarmanClient {
   private readonly config: AppConfig;
@@ -53,7 +83,7 @@ export class SolarmanClient {
   }
 
   private async ensureAuthenticated(force = false): Promise<void> {
-    if (!force && this.accessToken) {
+    if (!force && this.accessToken && Date.now() < this.tokenExpiresAt) {
       return;
     }
 
@@ -90,8 +120,8 @@ export class SolarmanClient {
     this.health = { ...this.health, freshness: "fresh", authenticated: true, lastError: null };
   }
 
-  private async ensurePlantId(): Promise<void> {
-    if (this.plantId) {
+  private async ensureDeviceSn(): Promise<void> {
+    if (this.deviceSn) {
       return;
     }
 
@@ -126,7 +156,6 @@ export class SolarmanClient {
       }
       throw error;
     }
-  }
 
   private recordSuccess(solarW: number, raw: unknown): SolarReading {
     const reading = {
@@ -165,7 +194,7 @@ export class SolarmanClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Solarman request failed (${response.status}) for ${route}`);
+      throw new Error(`Solarman request failed (${response.status}) for ${path}`);
     }
 
     const payload = (await response.json()) as Record<string, unknown>;
