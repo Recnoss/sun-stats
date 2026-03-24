@@ -43,9 +43,11 @@ const envSchema = z.object({
   SOLARMAN_APP_SECRET: optionalNonEmptyString,
   SOLARMAN_EMAIL: optionalNonEmptyString,
   SOLARMAN_PASSWORD: optionalNonEmptyString,
+  SOLARMAN_APP_ID: optionalNonEmptyString,
+  SOLARMAN_APP_SECRET: optionalNonEmptyString,
   SOLARMAN_PLANT_ID: optionalNonEmptyString,
-  SOLARMAN_DEVICE_SN: optionalNonEmptyString,
   SOLARMAN_BASE_URL: z.string().url().default("https://globalapi.solarmanpv.com"),
+  SOLARMAN_STATION_PAGE_SIZE: z.coerce.number().default(20),
   SOLARMAN_POLL_INTERVAL_MS: z.coerce.number().default(30_000),
   SNAPSHOT_INTERVAL_MS: z.coerce.number().default(5_000),
   SOLAR_STALE_AFTER_MS: z.coerce.number().default(90_000),
@@ -56,12 +58,12 @@ const envSchema = z.object({
     return;
   }
 
-  for (const field of ["SOLARMAN_APP_ID", "SOLARMAN_APP_SECRET", "SOLARMAN_EMAIL", "SOLARMAN_PASSWORD"] as const) {
+  for (const field of ["SOLARMAN_USERNAME", "SOLARMAN_PASSWORD", "SOLARMAN_APP_ID", "SOLARMAN_APP_SECRET"] as const) {
     if (!env[field]) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: [field],
-        message: `Required when SOLARMAN_ENABLED=true`
+        message: "Required when SOLARMAN_ENABLED=true"
       });
     }
   }
