@@ -156,6 +156,7 @@ export class SolarmanClient {
       }
       throw error;
     }
+  }
 
   private recordSuccess(solarW: number, raw: unknown): SolarReading {
     const reading = {
