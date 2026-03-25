@@ -6,38 +6,8 @@ interface PlantCandidate {
   id?: string | number;
   stationId?: string | number;
   name?: string;
+  stationName?: string;
 }
-
-interface StationListResponse {
-  stationList?: Station[];
-  total?: number;
-}
-
-interface DeviceItem {
-  deviceSn: string;
-  deviceId?: number;
-  deviceType?: string;
-  deviceState?: number;
-}
-
-interface DeviceListResponse {
-  deviceListItems?: DeviceItem[];
-}
-
-interface DataItem {
-  key: string;
-  value: string;
-  unit?: string;
-  name?: string;
-}
-
-interface CurrentDataResponse {
-  deviceSn?: string;
-  deviceState?: number;
-  dataList?: DataItem[];
-}
-
-const POWER_KEYS = ["APo_t1", "DPi_t1", "t_P_r", "total_active_power"];
 
 export class SolarmanClient {
   private readonly config: AppConfig;
@@ -50,6 +20,7 @@ export class SolarmanClient {
     lastError: null
   };
   private accessToken: string | null = null;
+  private tokenExpiresAt = 0;
   private plantId: string | null = null;
 
   public constructor(config: AppConfig) {
@@ -87,7 +58,7 @@ export class SolarmanClient {
       return;
     }
 
-    const { SOLARMAN_USERNAME: email, SOLARMAN_PASSWORD: password, SOLARMAN_APP_ID: appId, SOLARMAN_APP_SECRET: appSecret } = this.config;
+    const { SOLARMAN_EMAIL: email, SOLARMAN_PASSWORD: password, SOLARMAN_APP_ID: appId, SOLARMAN_APP_SECRET: appSecret } = this.config;
 
     if (!email || !password || !appId || !appSecret) {
       const message = "Solarman credentials are missing";
@@ -120,8 +91,8 @@ export class SolarmanClient {
     this.health = { ...this.health, freshness: "fresh", authenticated: true, lastError: null };
   }
 
-  private async ensureDeviceSn(): Promise<void> {
-    if (this.deviceSn) {
+  private async ensurePlantId(): Promise<void> {
+    if (this.plantId) {
       return;
     }
 
@@ -195,7 +166,7 @@ export class SolarmanClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Solarman request failed (${response.status}) for ${path}`);
+      throw new Error(`Solarman request failed (${response.status}) for ${route}`);
     }
 
     const payload = (await response.json()) as Record<string, unknown>;
