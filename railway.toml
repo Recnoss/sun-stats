@@ -6,6 +6,7 @@ dockerfilePath = "apps/backend/Dockerfile"
 
 [services.deploy]
 sleepApplication = true
+startCommand = "node apps/backend/dist/index.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 
