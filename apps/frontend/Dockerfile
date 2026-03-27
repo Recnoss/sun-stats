@@ -12,4 +12,4 @@ RUN npm run build --workspace frontend
 FROM nginx:1.27-alpine AS runtime
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf.template
 COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
-CMD ["/bin/sh", "-c", "export RESOLVER=$(grep nameserver /etc/resolv.conf | head -1 | awk '{print $2}') && envsubst '${BACKEND_URL} ${RESOLVER}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "export RESOLVER=$(grep nameserver /etc/resolv.conf | grep -v ':' | head -1 | awk '{print $2}') && envsubst '${BACKEND_URL} ${RESOLVER}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
