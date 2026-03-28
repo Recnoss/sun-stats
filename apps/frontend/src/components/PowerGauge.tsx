@@ -10,7 +10,63 @@ const R_MIN_O  = 140;
 const R_MIN_I  = 133;
 const R_LABEL  = 112;
 const NEEDLE_LEN = 135;
-const MAX_W = 10_000;
+
+type GaugeMode = "consumption" | "export";
+
+interface GaugeConfig {
+  maxW: number;
+  value: number;
+  label: string;
+  majorTicks: number[];
+  minorStep: number;
+  zones: { n0: number; n1: number; color: string; alpha: number }[];
+  formatLabel: (n: number, idx: number) => string;
+}
+
+function getGaugeConfig(snapshot: PowerSnapshot): GaugeConfig & { mode: GaugeMode } {
+  if (snapshot.status === "selling") {
+    const maxW = 35_000;
+    // Major ticks every 5kW: 0, 5k, 10k, 15k, 20k, 25k, 30k, 35k
+    const majorTicks = Array.from({ length: 8 }, (_, i) => i / 7);
+    return {
+      mode: "export",
+      maxW,
+      value: snapshot.gridExportW,
+      label: "Netteksport",
+      majorTicks,
+      minorStep: 1 / 35, // every 1kW
+      zones: [
+        { n0: 0,    n1: 0.857, color: "#00e5a0", alpha: 0.55 }, // 0-30kW green
+        { n0: 0.857, n1: 1.0,  color: "#f0a020", alpha: 0.55 }, // 30-35kW amber (near inverter limit)
+      ],
+      formatLabel: (_, idx) => {
+        const kw = idx * 5;
+        return kw === 0 ? "0" : `${kw}k`;
+      },
+    };
+  }
+
+  const maxW = 15_000;
+  // Major ticks every 3kW: 0, 3k, 6k, 9k, 12k, 15k
+  const majorTicks = Array.from({ length: 6 }, (_, i) => i / 5);
+  return {
+    mode: "consumption",
+    maxW,
+    value: snapshot.homeLoadW,
+    label: "Hjemforbruk",
+    majorTicks,
+    minorStep: 1 / 15, // every 1kW
+    zones: [
+      { n0: 0,    n1: 0.4,  color: "#00e5a0", alpha: 0.55 }, // 0-6kW green
+      { n0: 0.4,  n1: 0.67, color: "#f0a020", alpha: 0.55 }, // 6-10kW amber
+      { n0: 0.67, n1: 1.0,  color: "#ff3355", alpha: 0.55 }, // 10-15kW red
+    ],
+    formatLabel: (_, idx) => {
+      const kw = idx * 3;
+      return kw === 0 ? "0" : `${kw}k`;
+    },
+  };
+}
 
 const STATUS_LABELS: Record<DashboardStatus, string> = {
   buying:           "KJØPER FRA NETTET",
@@ -59,17 +115,6 @@ function arcD(r: number, n0: number, n1: number) {
   return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
 }
 
-const MAJOR_TICKS = Array.from({ length: 11 }, (_, i) => i / 10);
-const MINOR_TICKS = Array.from({ length: 51 }, (_, i) => i / 50).filter(
-  (n) => !MAJOR_TICKS.includes(n)
-);
-
-const ZONES: { n0: number; n1: number; color: string; alpha: number }[] = [
-  { n0: 0,    n1: 0.4,  color: "#00e5a0", alpha: 0.55 },
-  { n0: 0.4,  n1: 0.7,  color: "#f0a020", alpha: 0.55 },
-  { n0: 0.7,  n1: 1.0,  color: "#ff3355", alpha: 0.55 },
-];
-
 function formatGauge(w: number) {
   if (w >= 1000) return `${(w / 1000).toFixed(w >= 10000 ? 0 : 1)}\u202fkW`;
   return `${Math.round(w)}\u202fW`;
@@ -78,19 +123,35 @@ function formatGauge(w: number) {
 interface Props { snapshot: PowerSnapshot }
 
 export function PowerGauge({ snapshot }: Props) {
-  const normalized = Math.min(snapshot.homeLoadW / MAX_W, 1);
-  // -90° = needle left (0 W), 0° = needle up (5 kW), +90° = needle right (10 kW)
+  const config = getGaugeConfig(snapshot);
+  const normalized = Math.min(config.value / config.maxW, 1);
   const rotateDeg = normalized * 180 - 90;
   const accentColor = STATUS_COLOR[snapshot.status];
+
+  // Generate minor ticks (exclude positions that coincide with major ticks)
+  const minorTicks = Array.from(
+    { length: Math.round(1 / config.minorStep) + 1 },
+    (_, i) => i * config.minorStep,
+  ).filter((n) => !config.majorTicks.some((m) => Math.abs(m - n) < 0.001));
 
   return (
     <div className="gauge-wrap">
       <svg viewBox="0 0 400 268" aria-label="Power gauge">
         <defs>
           <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="#00e5a0" stopOpacity="0.9" />
-            <stop offset="45%"  stopColor="#f0a020" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#ff3355" stopOpacity="0.9" />
+            {config.mode === "export" ? (
+              <>
+                <stop offset="0%"   stopColor="#00e5a0" stopOpacity="0.9" />
+                <stop offset="85%"  stopColor="#00e5a0" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#f0a020" stopOpacity="0.9" />
+              </>
+            ) : (
+              <>
+                <stop offset="0%"   stopColor="#00e5a0" stopOpacity="0.9" />
+                <stop offset="45%"  stopColor="#f0a020" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#ff3355" stopOpacity="0.9" />
+              </>
+            )}
           </linearGradient>
           <filter id="glow">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -102,8 +163,8 @@ export function PowerGauge({ snapshot }: Props) {
           </filter>
         </defs>
 
-        {/* Zone arc segments (thin outer ring) */}
-        {ZONES.map((z) => (
+        {/* Zone arc segments */}
+        {config.zones.map((z) => (
           <path
             key={z.n0}
             d={arcD(R_ZONE, z.n0, z.n1)}
@@ -135,7 +196,7 @@ export function PowerGauge({ snapshot }: Props) {
         />
 
         {/* Major tick marks */}
-        {MAJOR_TICKS.map((n) => {
+        {config.majorTicks.map((n) => {
           const angle = (1 - n) * 180;
           const o = polar(R_TICK_O, angle);
           const i = polar(R_TICK_I, angle);
@@ -151,7 +212,7 @@ export function PowerGauge({ snapshot }: Props) {
         })}
 
         {/* Minor tick marks */}
-        {MINOR_TICKS.map((n) => {
+        {minorTicks.map((n) => {
           const angle = (1 - n) * 180;
           const o = polar(R_MIN_O, angle);
           const i = polar(R_MIN_I, angle);
@@ -167,10 +228,9 @@ export function PowerGauge({ snapshot }: Props) {
         })}
 
         {/* Scale labels */}
-        {MAJOR_TICKS.map((n, idx) => {
+        {config.majorTicks.map((n, idx) => {
           const angle = (1 - n) * 180;
           const pt = polar(R_LABEL, angle);
-          const label = idx === 0 ? "0" : idx === 10 ? "10k" : `${idx}k`;
           return (
             <text
               key={n}
@@ -183,7 +243,7 @@ export function PowerGauge({ snapshot }: Props) {
               fill="rgba(180,210,240,0.55)"
               fontWeight="400"
             >
-              {label}
+              {config.formatLabel(n, idx)}
             </text>
           );
         })}
@@ -200,7 +260,6 @@ export function PowerGauge({ snapshot }: Props) {
           }}
           filter="url(#needleGlow)"
         >
-          {/* Needle shadow/glow layer */}
           <line
             x1={CX} y1={CY + 10}
             x2={CX} y2={CY - NEEDLE_LEN}
@@ -209,7 +268,6 @@ export function PowerGauge({ snapshot }: Props) {
             strokeLinecap="round"
             strokeOpacity="0.4"
           />
-          {/* Needle body */}
           <polygon
             points={`
               ${CX - 2.5},${CY + 10}
@@ -235,7 +293,7 @@ export function PowerGauge({ snapshot }: Props) {
           fill={accentColor}
           style={{ filter: `drop-shadow(0 0 8px ${accentColor}88)` }}
         >
-          {formatGauge(snapshot.homeLoadW)}
+          {formatGauge(config.value)}
         </text>
 
         {/* Status badge */}

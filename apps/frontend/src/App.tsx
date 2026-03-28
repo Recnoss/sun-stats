@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CombinedHistoryChart } from "./components/CombinedHistoryChart.js";
 import { FreshnessPill } from "./components/FreshnessPill.js";
 import { HistoryChart } from "./components/HistoryChart.js";
 import { MetricCard } from "./components/MetricCard.js";
@@ -65,6 +66,7 @@ export default function App() {
     if (res.ok) setHistory((await res.json()) as HistorySeries);
   }
 
+  const gaugeLabel = snapshot.status === "selling" ? "Netteksport" : "Hjemforbruk";
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = now.toLocaleDateString("nb-NO", { weekday: "short", day: "numeric", month: "short" });
 
@@ -95,37 +97,87 @@ export default function App() {
       {/* Gauge hero — centered, full attention */}
       <div className="gauge-hero">
         <div className="panel gauge-panel">
-          <div className="gauge-panel__label">Hjemforbruk</div>
+          <div className="gauge-panel__label">{gaugeLabel}</div>
           <PowerGauge snapshot={snapshot} />
         </div>
       </div>
 
-      {/* Expand / collapse toggle */}
-      <button
-        className={`details-toggle${detailsOpen ? " details-toggle--open" : ""}`}
-        onClick={() => setDetailsOpen((v) => !v)}
-        aria-expanded={detailsOpen}
-      >
-        <span className="details-toggle__chevron">{detailsOpen ? "▲" : "▼"}</span>
-        {detailsOpen ? "Skjul detaljer" : "Vis detaljer"}
-      </button>
-
-      {/* Collapsible details */}
-      <div className={`details-section${detailsOpen ? "" : " details-section--collapsed"}`}>
-        <div className="metrics-row">
-          <MetricCard label="Solproduksjon" value={snapshot.solarW}      accent="solar"  maxValue={10_000} icon="☀" />
-          <MetricCard label="Hjemforbruk"   value={snapshot.homeLoadW}   accent="load"   maxValue={10_000} icon="⌂" />
-          <MetricCard label="Nettimport"    value={snapshot.gridImportW} accent="import" maxValue={10_000} icon="↓" />
-          <MetricCard label="Netteksport"   value={snapshot.gridExportW} accent="export" maxValue={10_000} icon="↑" />
+      {/* ── Mobile compact view ── */}
+      <div className="mobile-view">
+        <div className="compact-metrics">
+          <div className="compact-metric compact-metric--solar">
+            <span className="compact-metric__icon">☀</span>
+            <span className="compact-metric__value">{formatCompact(snapshot.solarW)}</span>
+            <span className="compact-metric__label">Sol</span>
+          </div>
+          <div className="compact-metric compact-metric--load">
+            <span className="compact-metric__icon">⌂</span>
+            <span className="compact-metric__value">{formatCompact(snapshot.homeLoadW)}</span>
+            <span className="compact-metric__label">Forbruk</span>
+          </div>
+          <div className="compact-metric compact-metric--import">
+            <span className="compact-metric__icon">↓</span>
+            <span className="compact-metric__value">{formatCompact(snapshot.gridImportW)}</span>
+            <span className="compact-metric__label">Import</span>
+          </div>
+          <div className="compact-metric compact-metric--export">
+            <span className="compact-metric__icon">↑</span>
+            <span className="compact-metric__value">{formatCompact(snapshot.gridExportW)}</span>
+            <span className="compact-metric__label">Eksport</span>
+          </div>
         </div>
-        <div className="charts-grid">
-          <HistoryChart points={history.points} title="Solproduksjon 24t" field="solarW"      color="#f0a020" />
-          <HistoryChart points={history.points} title="Hjemforbruk 24t"  field="homeLoadW"   color="#ff6b35" />
-          <HistoryChart points={history.points} title="Nettimport 24t"   field="gridImportW" color="#2196f3" />
-          <HistoryChart points={history.points} title="Netteksport 24t"  field="gridExportW" color="#00e5a0" />
+        <CombinedHistoryChart
+          points={history.points}
+          title="Produksjon / Forbruk 24t"
+          series={[
+            { field: "solarW",    color: "#f0a020", label: "Sol" },
+            { field: "homeLoadW", color: "#ff6b35", label: "Forbruk" },
+          ]}
+        />
+        <CombinedHistoryChart
+          points={history.points}
+          title="Nett Import / Eksport 24t"
+          series={[
+            { field: "gridImportW", color: "#2196f3", label: "Import" },
+            { field: "gridExportW", color: "#00e5a0", label: "Eksport" },
+          ]}
+        />
+      </div>
+
+      {/* ── Desktop detail view ── */}
+      <div className="desktop-view">
+        {/* Expand / collapse toggle */}
+        <button
+          className={`details-toggle${detailsOpen ? " details-toggle--open" : ""}`}
+          onClick={() => setDetailsOpen((v) => !v)}
+          aria-expanded={detailsOpen}
+        >
+          <span className="details-toggle__chevron">{detailsOpen ? "▲" : "▼"}</span>
+          {detailsOpen ? "Skjul detaljer" : "Vis detaljer"}
+        </button>
+
+        {/* Collapsible details */}
+        <div className={`details-section${detailsOpen ? "" : " details-section--collapsed"}`}>
+          <div className="metrics-row">
+            <MetricCard label="Solproduksjon" value={snapshot.solarW}      accent="solar"  maxValue={45_000} icon="☀" />
+            <MetricCard label="Hjemforbruk"   value={snapshot.homeLoadW}   accent="load"   maxValue={15_000} icon="⌂" />
+            <MetricCard label="Nettimport"    value={snapshot.gridImportW} accent="import" maxValue={15_000} icon="↓" />
+            <MetricCard label="Netteksport"   value={snapshot.gridExportW} accent="export" maxValue={35_000} icon="↑" />
+          </div>
+          <div className="charts-grid">
+            <HistoryChart points={history.points} title="Solproduksjon 24t" field="solarW"      color="#f0a020" />
+            <HistoryChart points={history.points} title="Hjemforbruk 24t"  field="homeLoadW"   color="#ff6b35" />
+            <HistoryChart points={history.points} title="Nettimport 24t"   field="gridImportW" color="#2196f3" />
+            <HistoryChart points={history.points} title="Netteksport 24t"  field="gridExportW" color="#00e5a0" />
+          </div>
         </div>
       </div>
 
     </div>
   );
+}
+
+function formatCompact(w: number): string {
+  if (w >= 1000) return `${(w / 1000).toFixed(w >= 10_000 ? 0 : 1)} kW`;
+  return `${Math.round(w)} W`;
 }
