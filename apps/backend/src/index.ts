@@ -46,6 +46,7 @@ async function bootstrap(): Promise<void> {
     getLiveSnapshot: () => latestSnapshot,
     getHistory: (window) => snapshotStore.getHistory(window),
     getHealth: () => buildHealth(),
+    getTibberRaw: () => tibberClient.getLatestRaw(),
     subscribe: (listener) => {
       subscribers.add(listener);
       if (latestSnapshot) {

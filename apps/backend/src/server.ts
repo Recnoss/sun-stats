@@ -13,6 +13,7 @@ interface ServerOptions {
   getLiveSnapshot: () => PowerSnapshot | null;
   getHistory: (window: string) => HistorySeries;
   getHealth: () => HealthSnapshot;
+  getTibberRaw: () => { power: number | null; powerProduction: number | null; ts: string | null };
   subscribe: (listener: (snapshot: PowerSnapshot) => void) => () => void;
 }
 
@@ -59,6 +60,8 @@ export function buildServer(options: ServerOptions) {
   });
 
   app.get("/api/health", async () => options.getHealth());
+
+  app.get("/api/debug/tibber", async () => options.getTibberRaw());
 
   app.get("/ws/live", { websocket: true }, (socket) => {
     const ws = socket as WsLike;
