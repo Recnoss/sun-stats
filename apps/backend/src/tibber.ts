@@ -90,7 +90,7 @@ export class TibberClient {
             this.latestGridReading = {
               ts,
               importW: Math.max(0, Math.round(gridPower)),
-              exportW: Math.max(0, Math.round(-gridPower)),
+              exportW: Math.max(0, Math.round(powerProduction)),
               raw: payload.data
             };
             this.latestSolarReading = {
