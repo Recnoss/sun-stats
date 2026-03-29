@@ -77,8 +77,8 @@ export class SnapshotStore {
         snapshot.homeLoadW
       );
 
-    this.db.prepare(`DELETE FROM snapshots WHERE ts < datetime('now', '-7 days')`).run();
-    this.db.prepare(`DELETE FROM minute_rollups WHERE minute_ts < datetime('now', '-7 days')`).run();
+    this.db.prepare(`DELETE FROM snapshots WHERE ts < datetime('now', '-25 hours')`).run();
+    this.db.prepare(`DELETE FROM minute_rollups WHERE minute_ts < datetime('now', '-25 hours')`).run();
   }
 
   public getLatestSnapshot(): PowerSnapshot | null {

@@ -14,7 +14,6 @@ const H = 100;
 const X_LABEL_H = 18;
 const TOTAL_H = H + X_LABEL_H;
 const GRID_LINES = 4;
-const HOUR_STEP = 2;
 
 const TOOLTIP_W = 96;
 const TOOLTIP_H = 22;
@@ -63,16 +62,25 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
   const formatMax = (w: number) =>
     w >= 1000 ? `${(w / 1000).toFixed(1)} kW` : `${Math.round(w)} W`;
 
-  const xLabels = points.length >= 2
-    ? points
-        .map((p, i) => {
-          const d = new Date(p.ts);
-          if (d.getMinutes() !== 0 || d.getHours() % HOUR_STEP !== 0) return null;
-          const x = (i / (points.length - 1)) * W;
-          return { x, label: formatTime(p.ts) };
-        })
-        .filter(Boolean) as { x: number; label: string }[]
-    : [];
+  // X-axis: time-based labels every 6h (max 5), positioned by actual time fraction
+  const xLabels = (() => {
+    if (points.length < 2) return [];
+    const t0 = new Date(points[0].ts).getTime();
+    const t1 = new Date(points[points.length - 1].ts).getTime();
+    const span = t1 - t0 || 1;
+    const midnight = new Date(t0);
+    midnight.setHours(0, 0, 0, 0);
+    const labels: { x: number; label: string }[] = [];
+    for (let h = 0; h <= 48; h += 6) {
+      const ts = midnight.getTime() + h * 3_600_000;
+      if (ts <= t0 || ts > t1) continue;
+      labels.push({
+        x: ((ts - t0) / span) * W,
+        label: new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    }
+    return labels;
+  })();
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (points.length < 2) return;
