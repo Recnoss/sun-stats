@@ -87,19 +87,24 @@ export class TibberClient {
             const gridPower = Number(reading.power ?? 0);
             const powerProduction = reading.powerProduction != null ? Number(reading.powerProduction) : null;
 
+            // If we're importing from the grid, we cannot simultaneously be exporting.
+            // Use this as a signal to clear stale held export values.
+            const isImporting = gridPower > 0;
+            const exportW = powerProduction != null
+              ? Math.max(0, Math.round(powerProduction))
+              : isImporting ? 0 : (this.latestGridReading?.exportW ?? 0);
+
             this.latestGridReading = {
               ts,
               importW: Math.max(0, Math.round(gridPower)),
-              exportW: powerProduction != null
-                ? Math.max(0, Math.round(powerProduction))
-                : (this.latestGridReading?.exportW ?? 0),
+              exportW,
               raw: payload.data
             };
             this.latestSolarReading = {
               ts,
               solarW: powerProduction != null
                 ? Math.max(0, Math.round(powerProduction))
-                : (this.latestSolarReading?.solarW ?? 0),
+                : isImporting ? 0 : (this.latestSolarReading?.solarW ?? 0),
               raw: payload.data
             };
             this.health = {
