@@ -53,15 +53,14 @@ body {
   margin: 0 auto;
 }
 
-/* Gauge hero — centered, capped width for max impact */
-.gauge-hero {
+/* Live section — gauge + metrics always visible, same centered width */
+.live-section {
   display: flex;
-  justify-content: center;
-}
-
-.gauge-hero .gauge-panel {
+  flex-direction: column;
+  gap: 1rem;
   width: 100%;
-  max-width: 580px;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 /* Metrics row — 4 cards in a horizontal strip */
@@ -77,7 +76,7 @@ body {
   gap: 1rem;
 }
 
-/* Collapsible details */
+/* Collapsible charts */
 .details-section {
   display: flex;
   flex-direction: column;
@@ -92,14 +91,6 @@ body {
   max-height: 0;
   opacity: 0;
   pointer-events: none;
-}
-
-/* Desktop view wrapper */
-.desktop-view {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
 }
 
 /* Expand / collapse button */
@@ -133,10 +124,6 @@ body {
   opacity: 0.7;
 }
 
-/* Mobile view — hidden by default, shown on small screens */
-.mobile-view {
-  display: none;
-}
 
 /* ─── Panel base ──────────────────────────────────────── */
 
@@ -501,7 +488,6 @@ body {
 
 @media (max-width: 860px) {
   .app-shell { padding: 0.75rem; gap: 0.75rem; }
-  .metrics-row { grid-template-columns: 1fr 1fr; }
   .charts-grid { grid-template-columns: 1fr; }
   .site-header__sub { display: none; }
 }
@@ -533,21 +519,19 @@ body {
     gap: 0.25rem;
   }
   .gauge-panel__label { font-size: 0.6rem; }
-  .gauge-hero .gauge-panel { max-width: 100%; }
 
-  /* Show mobile view, hide desktop view */
-  .mobile-view {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .desktop-view { display: none; }
+  /* 2×2 metric cards on mobile */
+  .metrics-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+  /* Compact metric cards on small screens */
+  .metric-card { padding: 0.75rem 0.9rem; }
+  .metric-card__number { font-size: clamp(1.3rem, 5vw, 1.8rem); }
 
   /* Compact chart cards on mobile */
-  .mobile-view .chart-card {
+  .chart-card {
     padding: 0.6rem 0.75rem;
     gap: 0.4rem;
     border-radius: 10px;
   }
-  .mobile-view .chart-card__title { font-size: 0.58rem; }
+  .chart-card__title { font-size: 0.58rem; }
 }

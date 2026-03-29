@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatTime } from "../lib/format.js";
 import type { HistoryPoint } from "../types.js";
 
@@ -10,10 +11,13 @@ interface HistoryChartProps {
 
 const W = 320;
 const H = 100;
-const X_LABEL_H = 14;   // extra height below chart for time labels
+const X_LABEL_H = 18;
 const TOTAL_H = H + X_LABEL_H;
 const GRID_LINES = 4;
-const HOUR_STEP = 3;    // show a label every N whole hours
+const HOUR_STEP = 2;
+
+const TOOLTIP_W = 96;
+const TOOLTIP_H = 22;
 
 function smoothLine(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return "";
@@ -32,7 +36,14 @@ function smoothLine(pts: { x: number; y: number }[]): string {
   return parts.join(" ");
 }
 
+function formatValue(w: number): string {
+  if (w >= 1000) return `${(w / 1000).toFixed(w >= 10_000 ? 0 : 1)} kW`;
+  return `${Math.round(w)} W`;
+}
+
 export function HistoryChart({ points, title, field, color }: HistoryChartProps) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   const values = points.map((p) => p[field]);
   const max    = Math.max(...values, 1);
 
@@ -52,7 +63,6 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
   const formatMax = (w: number) =>
     w >= 1000 ? `${(w / 1000).toFixed(1)} kW` : `${Math.round(w)} W`;
 
-  // Whole-hour labels every HOUR_STEP hours
   const xLabels = points.length >= 2
     ? points
         .map((p, i) => {
@@ -64,6 +74,34 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
         .filter(Boolean) as { x: number; label: string }[]
     : [];
 
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (points.length < 2) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width;
+    const idx = Math.round(relX * (points.length - 1));
+    setHoverIdx(Math.max(0, Math.min(points.length - 1, idx)));
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
+    if (points.length < 2 || !e.touches[0]) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = (touch.clientX - rect.left) / rect.width;
+    const idx = Math.round(relX * (points.length - 1));
+    setHoverIdx(Math.max(0, Math.min(points.length - 1, idx)));
+  };
+
+  const hoveredCoord = hoverIdx !== null ? coords[hoverIdx] : null;
+  const hoveredPoint = hoverIdx !== null ? points[hoverIdx] : null;
+
+  let tooltipX = 0;
+  let tooltipY = 0;
+  if (hoveredCoord) {
+    tooltipX = Math.max(0, Math.min(W - TOOLTIP_W, hoveredCoord.x - TOOLTIP_W / 2));
+    tooltipY = hoveredCoord.y < 35 ? hoveredCoord.y + 8 : hoveredCoord.y - TOOLTIP_H - 8;
+  }
+
   return (
     <article className="panel chart-card">
       <div className="chart-card__header">
@@ -71,7 +109,15 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
         <span className="chart-card__max">{formatMax(max)}</span>
       </div>
 
-      <svg viewBox={`0 0 ${W} ${TOTAL_H}`} aria-label={`${title} history chart`}>
+      <svg
+        viewBox={`0 0 ${W} ${TOTAL_H}`}
+        aria-label={`${title} history chart`}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverIdx(null)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={() => setHoverIdx(null)}
+        style={{ touchAction: "none" }}
+      >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor={color} stopOpacity="0.35" />
@@ -117,8 +163,8 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
           />
         )}
 
-        {/* Latest value dot */}
-        {coords.length > 0 && (
+        {/* Latest value dot (only when not hovering) */}
+        {coords.length > 0 && hoverIdx === null && (
           <circle
             cx={coords.at(-1)!.x}
             cy={coords.at(-1)!.y}
@@ -131,7 +177,7 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
         {/* X-axis baseline */}
         <line
           x1="0" y1={H} x2={W} y2={H}
-          stroke="rgba(255,255,255,0.08)"
+          stroke="rgba(255,255,255,0.1)"
           strokeWidth="1"
         />
 
@@ -140,15 +186,56 @@ export function HistoryChart({ points, title, field, color }: HistoryChartProps)
           <text
             key={x}
             x={x.toFixed(1)}
-            y={H + 11}
+            y={H + 13}
             textAnchor="middle"
-            fontSize="8"
+            fontSize="9.5"
             fontFamily="'JetBrains Mono','Consolas',monospace"
-            fill="rgba(180,210,240,0.4)"
+            fill="rgba(180,210,240,0.65)"
           >
             {label}
           </text>
         ))}
+
+        {/* Hover: crosshair + dot + tooltip */}
+        {hoveredCoord && hoveredPoint && (
+          <>
+            <line
+              x1={hoveredCoord.x.toFixed(1)} y1="0"
+              x2={hoveredCoord.x.toFixed(1)} y2={H}
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth="1"
+              strokeDasharray="3,2"
+            />
+            <circle
+              cx={hoveredCoord.x}
+              cy={hoveredCoord.y}
+              r="4.5"
+              fill={color}
+              stroke="rgba(255,255,255,0.85)"
+              strokeWidth="1.5"
+              style={{ filter: `drop-shadow(0 0 6px ${color})` }}
+            />
+            <rect
+              x={tooltipX} y={tooltipY}
+              width={TOOLTIP_W} height={TOOLTIP_H}
+              rx="4"
+              fill="rgba(7,11,16,0.93)"
+              stroke={color}
+              strokeWidth="0.75"
+              strokeOpacity="0.7"
+            />
+            <text
+              x={tooltipX + TOOLTIP_W / 2}
+              y={tooltipY + 14}
+              textAnchor="middle"
+              fontSize="8.5"
+              fontFamily="'JetBrains Mono','Consolas',monospace"
+              fill="rgba(220,240,255,0.95)"
+            >
+              {formatTime(hoveredPoint.ts)} · {formatValue(hoveredPoint[field])}
+            </text>
+          </>
+        )}
       </svg>
     </article>
   );
