@@ -29,20 +29,29 @@ export class SolarmanClient {
   }
 
   public async poll(): Promise<SolarReading> {
-    await this.ensureAuthenticated();
-    await this.ensurePlantId();
+    try {
+      await this.ensureAuthenticated();
+      await this.ensurePlantId();
 
-    const data = await this.fetchRealtimeData(this.plantId!);
-    const solarW = extractNumberByHints(data, [
-      "generationPower",
-      "currentPower",
-      "outputPower",
-      "pac",
-      "activePower",
-      "power"
-    ]);
+      const data = await this.fetchRealtimeData(this.plantId!);
+      const solarW = extractNumberByHints(data, [
+        "generationPower",
+        "currentPower",
+        "outputPower",
+        "pac",
+        "activePower",
+        "power"
+      ]);
 
-    return this.recordSuccess(solarW ?? 0, data);
+      return this.recordSuccess(solarW ?? 0, data);
+    } catch (error) {
+      this.health = {
+        ...this.health,
+        freshness: this.latestReading ? "stale" : "offline",
+        lastError: String(error)
+      };
+      throw error;
+    }
   }
 
   public getLatestReading(): SolarReading | null {

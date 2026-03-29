@@ -78,7 +78,7 @@ async function startBackgroundTasks(log: { info: (message: string) => void; erro
 
   setInterval(() => {
     const solarReading: SolarReading | null = solarmanClient
-      ? (solarmanClient.getLatestReading() ?? tibberClient.getLatestSolarReading())
+      ? solarmanClient.getLatestReading()
       : tibberClient.getLatestSolarReading();
 
     latestSnapshot = deriveSnapshot({
