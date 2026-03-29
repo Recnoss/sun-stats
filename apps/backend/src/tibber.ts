@@ -155,15 +155,6 @@ export class TibberClient {
     return this.health;
   }
 
-  public getLatestRaw(): { power: number | null; powerProduction: number | null; ts: string | null } {
-    const raw = this.latestGridReading?.raw as { liveMeasurement?: { power?: number; powerProduction?: number; timestamp?: string } } | undefined;
-    return {
-      power: raw?.liveMeasurement?.power ?? null,
-      powerProduction: raw?.liveMeasurement?.powerProduction ?? null,
-      ts: raw?.liveMeasurement?.timestamp ?? null
-    };
-  }
-
   private createSubscriptionClient(websocketSubscriptionUrl: string): Client {
     return createClient({
       url: websocketSubscriptionUrl || DEFAULT_WS_URL,
